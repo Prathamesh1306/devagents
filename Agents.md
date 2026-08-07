@@ -504,3 +504,36 @@ A story is DONE only when:
 - [ ] GitHub Project moved to In Review
 
 Never claim completion without evidence.
+
+
+## Autonomous Run Logging
+
+After every autonomous run, create or update:
+
+`docs/autonomous-runs/YYYY-MM-DD.md`
+
+The log must record:
+
+1. Run start and completion time.
+2. Stories selected.
+3. Dependencies verified.
+4. Story status.
+5. Feature branch created.
+6. Files/modules changed.
+7. Tests executed and results.
+8. Lint/type/security check results.
+9. Commit SHA.
+10. Pull request number/link.
+11. Known limitations.
+12. Blockers and failure reasons.
+13. Final run summary.
+
+Rules:
+
+- One log file per calendar day.
+- Never delete previous run logs.
+- Never record secrets, API keys, tokens, credentials, or sensitive environment values.
+- Do not claim a test passed unless it was actually executed.
+- Do not mark a story complete if verification failed.
+- If the run crashes before completion, record the failure and last known state.
+- Update the log before finishing the autonomous run.
