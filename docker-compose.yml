@@ -39,6 +39,8 @@ services:
     restart: always
     ports:
       - "8005:8000"
+    volumes:
+      - .:/app
     environment:
       - DATABASE_URL=postgresql://devagents:devagents_pass@postgres:5432/devagents_db
       - CELERY_BROKER_URL=redis://redis:6379/0
@@ -56,6 +58,8 @@ services:
       dockerfile: services/worker/Dockerfile
     container_name: devagents_worker
     restart: always
+    volumes:
+      - .:/app
     environment:
       - DATABASE_URL=postgresql://devagents:devagents_pass@postgres:5432/devagents_db
       - CELERY_BROKER_URL=redis://redis:6379/0
