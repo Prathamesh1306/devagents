@@ -6,6 +6,9 @@
 [![LangGraph](https://img.shields.io/badge/LangGraph-OSS-black.svg)](https://github.com/langchain-ai/langgraph)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791.svg)](https://www.postgresql.org/)
 
+8. [08_IMPLEMENTATION_ROADMAP.md](file:///Users/prathamesh/My%20Drive%20%28arceusgaming13@gmail.com%29/DevAgents%20Enterprise%20Architecture/Specifications/08_IMPLEMENTATION_ROADMAP.md) — 13-Part 69-story sequential build plan
+9. [09_DISTRIBUTION_ROADMAP.md](file:///Users/prathamesh/My%20Drive%20%28arceusgaming13@gmail.com%29/DevAgents%20Enterprise%20Architecture/Specifications/09_DISTRIBUTION_ROADMAP.md) — Hybrid Open-Core, Managed SaaS & Enterprise On-Prem distribution strategy
+
 **DevAgents** is a zero-architectural-flaw, self-hosted, multi-agent AI software engineering platform. It takes a natural-language requirement or GitHub issue and autonomously plans, codes, tests, self-heals, reviews, documents, and (with human approval) ships a pull request with full auditability, multi-tenant isolation, and zero-trust security.
 
 ### 🌟 Key Platform Capabilities
