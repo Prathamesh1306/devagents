@@ -8,6 +8,11 @@
 
 **DevAgents** is a zero-architectural-flaw, self-hosted, multi-agent AI software engineering platform. It takes a natural-language requirement or GitHub issue and autonomously plans, codes, tests, self-heals, reviews, documents, and (with human approval) ships a pull request with full auditability, multi-tenant isolation, and zero-trust security.
 
+### 🌟 Key Platform Capabilities
+- **Interactive & Event-Driven Tasks**: Submit requirements via CLI, Web UI, Slack, or GitHub Webhooks.
+- **🌙 Autonomous Nightly Scanner Agent**: Connect DevAgents to any repository to run scheduled background scans (e.g., midnight cron jobs or `autofix` issue labels). It autonomously triages open issues, fixes failing tests, verifies solutions in MicroVM sandboxes, and opens ready-to-merge Pull Requests before developers arrive in the morning!
+- **🔒 Dedicated Multi-Tenant Isolation**: Hard isolation at PostgreSQL RLS, vector DB namespaces, and worker queue layers so every organization/enterprise has their own isolated DevAgent environment.
+
 ---
 
 ## 🏗 System Architecture & Monorepo Structure
