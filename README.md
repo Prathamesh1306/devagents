@@ -149,6 +149,7 @@ Retrieves current task state, status, token usage, and trace details.
 | **Part 9** | **Guardrails, Secret Redaction & Compliance** | ⏳ Planned | `#43` – `#47` |
 | **Part 10** | **HA, Scale & Production K8s Deployment** | ⏳ Planned | `#48` – `#53` |
 | **Part 11** | **Web Dashboard UI, SSO & SaaS Monetization (Stripe)** | ⏳ Planned | `#55` – `#58` |
+| **Part 12** | **Enterprise AST Graph, Security Proxy, Live WebSockets & Helm** | ⏳ Planned | `#59` – `#64` |
 
 ---
 
