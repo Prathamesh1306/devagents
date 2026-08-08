@@ -6,6 +6,9 @@
 [![LangGraph](https://img.shields.io/badge/LangGraph-OSS-black.svg)](https://github.com/langchain-ai/langgraph)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791.svg)](https://www.postgresql.org/)
 
+8. [08_IMPLEMENTATION_ROADMAP.md](file:///Users/prathamesh/My%20Drive%20%28arceusgaming13@gmail.com%29/DevAgents%20Enterprise%20Architecture/Specifications/08_IMPLEMENTATION_ROADMAP.md) — 13-Part 69-story sequential build plan
+9. [09_DISTRIBUTION_ROADMAP.md](file:///Users/prathamesh/My%20Drive%20%28arceusgaming13@gmail.com%29/DevAgents%20Enterprise%20Architecture/Specifications/09_DISTRIBUTION_ROADMAP.md) — Hybrid Open-Core, Managed SaaS & Enterprise On-Prem distribution strategy
+
 **DevAgents** is a zero-architectural-flaw, self-hosted, multi-agent AI software engineering platform. It takes a natural-language requirement or GitHub issue and autonomously plans, codes, tests, self-heals, reviews, documents, and (with human approval) ships a pull request with full auditability, multi-tenant isolation, and zero-trust security.
 
 ### 🌟 Key Platform Capabilities
@@ -148,6 +151,9 @@ Retrieves current task state, status, token usage, and trace details.
 | **Part 8** | **Multi-Tenancy (Postgres RLS & Isolation)** | ⏳ Planned | `#37` – `#42` |
 | **Part 9** | **Guardrails, Secret Redaction & Compliance** | ⏳ Planned | `#43` – `#47` |
 | **Part 10** | **HA, Scale & Production K8s Deployment** | ⏳ Planned | `#48` – `#53` |
+| **Part 11** | **Web Dashboard UI, SSO & SaaS Monetization (Stripe)** | ⏳ Planned | `#55` – `#58` |
+| **Part 12** | **Enterprise AST Graph, Security Proxy, Live WebSockets & Helm** | ⏳ Planned | `#59` – `#64` |
+| **Part 13** | **Enterprise Security, Previews, Test Isolation & Fallback** | ⏳ Planned | `#65` – `#69` |
 
 ---
 

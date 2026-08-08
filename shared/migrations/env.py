@@ -12,7 +12,8 @@ if config.config_file_name:
 
 db_url = os.getenv("DATABASE_URL")
 if db_url:
-    config.set_main_option("sqlalchemy.url", db_url)
+    # Escape % for configparser interpolation safety
+    config.set_main_option("sqlalchemy.url", db_url.replace("%", "%%"))
 
 target_metadata = Base.metadata
 
