@@ -27,6 +27,67 @@ class StubLLMClient(BaseLLMClient):
             completion_tokens=completion_tokens
         )
 
+class GeminiLLMClient(BaseLLMClient):
+    """Google Gemini API provider wrapper."""
+    def __init__(self, model_name: Optional[str] = None, api_key: Optional[str] = None):
+        super().__init__(model_name=model_name or os.getenv("GEMINI_MODEL", "gemini-1.5-flash"))
+        self.api_key = api_key or os.getenv("GEMINI_API_KEY")
+
+    def generate(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        max_tokens: int = 1000,
+        temperature: float = 0.7
+    ) -> LLMResponse:
+        if not self.api_key:
+            res = StubLLMClient(model_name=f"{self.model_name}-stub").generate(prompt, system_prompt, max_tokens, temperature)
+            res.provider = "gemini"
+            return res
+
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model_name}:generateContent?key={self.api_key}"
+        headers = {"Content-Type": "application/json"}
+        
+        contents = []
+        if system_prompt:
+            contents.append({"role": "user", "parts": [{"text": f"System Directive: {system_prompt}"}]})
+        contents.append({"role": "user", "parts": [{"text": prompt}]})
+
+        payload = {
+            "contents": contents,
+            "generationConfig": {
+                "temperature": temperature,
+                "maxOutputTokens": max_tokens
+            }
+        }
+
+        try:
+            req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="POST")
+            with urllib.request.urlopen(req) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                candidates = data.get("candidates", [])
+                if candidates and "content" in candidates[0]:
+                    parts = candidates[0]["content"].get("parts", [])
+                    content = "".join(p.get("text", "") for p in parts)
+                else:
+                    content = ""
+                
+                usage = data.get("usageMetadata", {})
+                prompt_tokens = usage.get("promptTokenCount", len(prompt.split()))
+                completion_tokens = usage.get("candidatesTokenCount", len(content.split()))
+
+                return LLMResponse(
+                    content=content,
+                    model=self.model_name,
+                    provider="gemini",
+                    prompt_tokens=prompt_tokens,
+                    completion_tokens=completion_tokens
+                )
+        except Exception as e:
+            res = StubLLMClient(model_name=f"{self.model_name}-fallback").generate(prompt, system_prompt, max_tokens, temperature)
+            res.provider = "gemini"
+            return res
+
 class OpenAILLMClient(BaseLLMClient):
     """OpenAI API provider wrapper."""
     def __init__(self, model_name: Optional[str] = None, api_key: Optional[str] = None):
@@ -41,7 +102,6 @@ class OpenAILLMClient(BaseLLMClient):
         temperature: float = 0.7
     ) -> LLMResponse:
         if not self.api_key:
-            # Fallback to stub if API key is not configured
             res = StubLLMClient(model_name=f"{self.model_name}-stub").generate(prompt, system_prompt, max_tokens, temperature)
             res.provider = "openai"
             return res
@@ -158,8 +218,6 @@ class OllamaLLMClient(BaseLLMClient):
                     completion_tokens=data.get("eval_count", len(content.split()))
                 )
         except Exception:
-            # If Ollama endpoint is not reachable locally, fall back gracefully to stub
             res = StubLLMClient(model_name=f"{self.model_name}-fallback").generate(prompt, system_prompt, max_tokens, temperature)
             res.provider = "ollama"
             return res
-
