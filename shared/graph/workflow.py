@@ -7,11 +7,22 @@ from shared.graph.prompts import (
     REVISE_PLAN_SYSTEM_PROMPT,
     parse_json_response
 )
+from shared.graph.circuit_breaker import check_token_budget
 
 def planner_node(state: DevAgentState) -> dict:
     prompt = state.get("prompt", "")
     task_id = state.get("task_id", "")
     logs = list(state.get("logs", []))
+    
+    # 1. Pre-call circuit breaker check
+    is_allowed, reason = check_token_budget(state, estimated_tokens=1500)
+    if not is_allowed:
+        logs.append(f"Planner node ABORTED: {reason}")
+        return {
+            "status": "failed_budget_exceeded",
+            "logs": logs,
+            "error": reason
+        }
     
     llm = get_llm_client()
     response = llm.generate(prompt=prompt, system_prompt=PLANNER_SYSTEM_PROMPT)
@@ -31,6 +42,16 @@ def coder_node(state: DevAgentState) -> dict:
     plan = state.get("implementation_plan", "")
     task_id = state.get("task_id", "")
     logs = list(state.get("logs", []))
+    
+    # 1. Pre-call circuit breaker check
+    is_allowed, reason = check_token_budget(state, estimated_tokens=2000)
+    if not is_allowed:
+        logs.append(f"Coder node ABORTED: {reason}")
+        return {
+            "status": "failed_budget_exceeded",
+            "logs": logs,
+            "error": reason
+        }
     
     llm = get_llm_client()
     coder_prompt = f"Implementation Plan:\n{plan}\n\nGenerate source code and tests."
