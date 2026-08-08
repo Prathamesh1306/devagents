@@ -174,7 +174,7 @@ export default function App() {
 
       {/* Task Detail Inspection Modal */}
       {selectedTask && (
-        <TaskDetailModal task={selectedTask} onClose={() => setSelectedTask(null)} />
+        <TaskDetailModal task={selectedTask} onClose={() => setSelectedTask(null)} onRefresh={fetchTasks} />
       )}
     </div>
   );

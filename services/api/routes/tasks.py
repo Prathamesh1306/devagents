@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from shared.db.session import get_db
-from shared.db.models import Task
+from shared.db.models import Task, LLMCall
 from services.worker.celery_app import run_task_graph
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
@@ -14,19 +14,9 @@ class TaskCreateRequest(BaseModel):
     token_budget: Optional[int] = Field(default=100000, description="Max token budget allowed")
     source: Optional[str] = Field(default="api", description="Source of task (api, web, cli)")
 
-class TaskResponse(BaseModel):
-    id: str
-    task_prompt: str
-    final_status: str
-    token_budget: int
-    tokens_used: int
-    pr_url: Optional[str] = None
-    trace_id: Optional[str] = None
-    created_at: str
-    updated_at: str
-
-    class Config:
-        from_attributes = True
+class TaskReviewRequest(BaseModel):
+    plan_approved: bool = Field(..., description="Whether to approve technical plan")
+    human_feedback: Optional[str] = Field(default=None, description="Optional revision feedback")
 
 @router.post("", status_code=status.HTTP_201_CREATED)
 def create_task(req: TaskCreateRequest, db: Session = Depends(get_db)):
@@ -46,7 +36,6 @@ def create_task(req: TaskCreateRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(task)
 
-    # Trigger Celery task asynchronously
     run_task_graph.delay(str(task.id))
 
     return {
@@ -100,4 +89,48 @@ def get_task(task_id: str, db: Session = Depends(get_db)):
         "trace_id": task.trace_id,
         "created_at": task.created_at.isoformat() if task.created_at else "",
         "updated_at": task.updated_at.isoformat() if task.updated_at else ""
+    }
+
+@router.get("/{task_id}/llm-calls")
+def get_task_llm_calls(task_id: str, db: Session = Depends(get_db)):
+    try:
+        task_uuid = uuid.UUID(task_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid task UUID format")
+
+    calls = db.query(LLMCall).filter(LLMCall.task_id == task_uuid).order_by(LLMCall.created_at.asc()).all()
+    return [
+        {
+            "id": str(c.id),
+            "node_name": c.node_name,
+            "model": c.model,
+            "prompt_tokens": c.prompt_tokens,
+            "completion_tokens": c.completion_tokens,
+            "cost_usd": float(c.cost_usd),
+            "latency_ms": c.latency_ms,
+            "created_at": c.created_at.isoformat() if c.created_at else ""
+        }
+        for c in calls
+    ]
+
+@router.post("/{task_id}/review")
+def review_task_plan(task_id: str, req: TaskReviewRequest, db: Session = Depends(get_db)):
+    try:
+        task_uuid = uuid.UUID(task_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid task UUID format")
+
+    task = db.query(Task).filter(Task.id == task_uuid).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    new_status = "plan_approved" if req.plan_approved else "plan_rejected"
+    task.final_status = new_status
+    db.commit()
+
+    return {
+        "id": str(task.id),
+        "final_status": task.final_status,
+        "plan_approved": req.plan_approved,
+        "human_feedback": req.human_feedback
     }
