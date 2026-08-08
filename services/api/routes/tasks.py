@@ -60,6 +60,25 @@ def create_task(req: TaskCreateRequest, db: Session = Depends(get_db)):
         "updated_at": task.updated_at.isoformat() if task.updated_at else ""
     }
 
+@router.get("/list/all")
+@router.get("/list")
+def list_tasks(limit: int = 50, db: Session = Depends(get_db)):
+    tasks = db.query(Task).order_by(Task.created_at.desc()).limit(limit).all()
+    return [
+        {
+            "id": str(t.id),
+            "task_prompt": t.task_prompt,
+            "final_status": t.final_status,
+            "token_budget": t.token_budget,
+            "tokens_used": t.tokens_used,
+            "pr_url": t.pr_url,
+            "trace_id": t.trace_id,
+            "created_at": t.created_at.isoformat() if t.created_at else "",
+            "updated_at": t.updated_at.isoformat() if t.updated_at else ""
+        }
+        for t in tasks
+    ]
+
 @router.get("/{task_id}")
 def get_task(task_id: str, db: Session = Depends(get_db)):
     try:

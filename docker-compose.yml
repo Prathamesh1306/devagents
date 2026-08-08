@@ -69,5 +69,20 @@ services:
       redis:
         condition: service_healthy
 
+  frontend:
+    build:
+      context: .
+      dockerfile: services/frontend/Dockerfile
+    container_name: devagents_frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./services/frontend:/app
+      - /app/node_modules
+    depends_on:
+      api:
+        condition: service_started
+
 volumes:
   devagents_pgdata:
