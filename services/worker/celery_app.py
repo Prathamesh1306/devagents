@@ -27,21 +27,39 @@ def run_task_graph(task_id_str: str):
         task.final_status = "running"
         db.commit()
 
-        # 2. Prepare initial State
+        # 2. Prepare initial State with defaults for all DevAgentState fields
         initial_state: DevAgentState = {
             "task_id": task_id_str,
             "prompt": task.task_prompt,
             "status": "running",
             "implementation_plan": None,
             "logs": [f"Task {task_id_str} initialized in worker."],
-            "tokens_used": 0
+            "tokens_used": 0,
+            "structured_plan": None,
+            "acceptance_criteria": None,
+            "generated_code": None,
+            "structured_code": None,
+            "retry_count": 0,
+            "max_retries": 3,
+            "last_traceback": None,
+            "error": None,
+            "test_results": None,
+            "review_status": None,
+            "security_findings": None,
+            "hitl_status": "not_reached",
+            "plan_approved": True,
+            "human_feedback": None,
+            "token_budget": task.token_budget or 100000,
+            "final_status": "running",
+            "pr_url": None,
+            "trace_id": task.trace_id,
         }
 
         # 3. Create & execute LangGraph compiled graph
         graph = create_agent_graph()
         final_state = graph.invoke(initial_state)
 
-        # 4. Save checkpoint record to DB (P1-S3 acceptance requirement)
+        # 4. Save checkpoint record to DB
         checkpoint_id = uuid.uuid4()
         checkpoint_sql = text("""
             INSERT INTO checkpoints (id, task_id, checkpoint_seq, node_name, state_json, created_at)
@@ -56,16 +74,19 @@ def run_task_graph(task_id_str: str):
                 "status": final_state.get("status"),
                 "implementation_plan": final_state.get("implementation_plan"),
                 "logs": final_state.get("logs"),
-                "tokens_used": final_state.get("tokens_used")
+                "tokens_used": final_state.get("tokens_used"),
+                "generated_code": final_state.get("generated_code"),
+                "test_results": final_state.get("test_results"),
+                "retry_count": final_state.get("retry_count", 0),
             })
         })
 
         # 5. Update Task record
-        task.final_status = final_state.get("status", "completed")
+        task.final_status = final_state.get("final_status") or final_state.get("status", "completed")
         task.tokens_used = final_state.get("tokens_used", 0)
         db.commit()
 
-        print(f"[Worker Success] Task {task_id_str} completed successfully.")
+        print(f"[Worker Success] Task {task_id_str} completed with status: {task.final_status}.")
         return final_state
     except Exception as e:
         db.rollback()

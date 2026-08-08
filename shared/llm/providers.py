@@ -30,7 +30,7 @@ class StubLLMClient(BaseLLMClient):
 class GeminiLLMClient(BaseLLMClient):
     """Google Gemini API provider wrapper."""
     def __init__(self, model_name: Optional[str] = None, api_key: Optional[str] = None):
-        super().__init__(model_name=model_name or os.getenv("GEMINI_MODEL", "gemini-1.5-flash"))
+        super().__init__(model_name=model_name or os.getenv("GEMINI_MODEL", "gemini-flash-latest"))
         self.api_key = api_key or os.getenv("GEMINI_API_KEY")
 
     def generate(

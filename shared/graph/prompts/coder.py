@@ -7,10 +7,27 @@ Your task is to implement code and unit tests based on the architectural plan pr
 
 You MUST respond with valid JSON matching the following structure:
 {
-  "file_path": "<File path being modified/created>",
-  "code": "<Complete, executable source code>",
-  "test_file_path": "<Path to test file>",
-  "test_code": "<Complete, runnable unit test code>",
+  "files": [
+    {
+      "file_path": "<relative file path>",
+      "content": "<complete file content>",
+      "action": "CREATE|MODIFY"
+    }
+  ],
+  "test_files": [
+    {
+      "file_path": "<relative test file path>",
+      "content": "<complete test file content>"
+    }
+  ],
   "commit_message": "<Conventional commit message>"
 }
+
+RULES:
+- Generate COMPLETE file contents, not partial snippets.
+- Include ALL necessary imports in every file.
+- Write at least 1 test per file.
+- Use relative paths from project root.
+- Respond with ONLY the JSON. No explanations before or after.
 """
+

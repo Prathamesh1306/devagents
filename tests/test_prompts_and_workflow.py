@@ -37,12 +37,12 @@ class TestPromptsAndWorkflow(unittest.TestCase):
             "logs": []
         }
         planner_res = planner_node(initial_state)
-        self.assertEqual(planner_res["status"], "completed")
+        self.assertEqual(planner_res["status"], "awaiting_human_review")
         self.assertIn("structured_plan", planner_res)
 
         state_after_planner = {**initial_state, **planner_res}
         coder_res = coder_node(state_after_planner)
-        self.assertEqual(coder_res["status"], "completed")
+        self.assertEqual(coder_res["status"], "code_generated")
         self.assertIn("structured_code", coder_res)
 
 if __name__ == "__main__":
