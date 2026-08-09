@@ -10,6 +10,7 @@ from shared.graph.prompts import (
 )
 from shared.graph.circuit_breaker import check_token_budget
 from shared.graph.test_runner import run_tests_locally
+from shared.graph.reviewer import review_generated_code
 
 def planner_node(state: DevAgentState) -> dict:
     prompt = state.get("prompt") or state.get("task_prompt", "")
@@ -98,6 +99,27 @@ def coder_node(state: DevAgentState) -> dict:
         "tokens_used": state.get("tokens_used", 0) + response.total_tokens
     }
 
+def reviewer_node(state: DevAgentState) -> dict:
+    """Deterministic reviewer node: checks generated code against safety/sanity rules."""
+    logs = list(state.get("logs", []))
+    generated_code = state.get("generated_code") or {}
+
+    review_res = review_generated_code(generated_code)
+    findings = review_res.get("findings", [])
+
+    if review_res["passed"]:
+        logs.append(f"Reviewer node: ✅ Safety review PASSED ({len(findings)} minor findings)")
+        status = "review_passed"
+    else:
+        logs.append(f"Reviewer node: ⚠️ Safety review FAILED — {len(findings)} high severity findings")
+        status = "review_failed"
+
+    return {
+        "review_status": status,
+        "security_findings": findings,
+        "logs": logs
+    }
+
 def execute_tests_node(state: DevAgentState) -> dict:
     """Execute generated code tests in a local subprocess with timeout."""
     logs = list(state.get("logs", []))
@@ -125,7 +147,7 @@ def execute_tests_node(state: DevAgentState) -> dict:
     }
 
 def route_test_results(state: DevAgentState) -> str:
-    """Deterministic router: budget check → retry check → pass/fail routing."""
+    """Deterministic router: budget check → retry check → pass/escalate routing."""
     # Budget gate
     tokens_used = state.get("tokens_used", 0)
     token_budget = state.get("token_budget", 100000)
@@ -141,21 +163,35 @@ def route_test_results(state: DevAgentState) -> str:
     max_retries = state.get("max_retries", 3)
     if retry_count < max_retries:
         return "coder"
-    return "aborted"
+    return "human_escalation"
 
-def aborted_node(state: DevAgentState) -> dict:
-    """Terminal node for tasks that exhaust retries or budget."""
+def human_escalation_node(state: DevAgentState) -> dict:
+    """
+    Escalation node: reached when all retries are exhausted.
+    Surfaces task to human engineer via HITL UI with full diagnostic context.
+    """
     logs = list(state.get("logs", []))
     retry_count = state.get("retry_count", 0)
     max_retries = state.get("max_retries", 3)
+
+    msg = f"🚨 ESCALATION: All {retry_count}/{max_retries} automated retries exhausted. Human intervention required."
+    logs.append(msg)
+
+    return {
+        "status": "escalated",
+        "final_status": "escalated",
+        "hitl_status": "pending_escalation",
+        "error": msg,
+        "logs": logs
+    }
+
+def aborted_node(state: DevAgentState) -> dict:
+    """Terminal node for tasks that breach budget ceilings."""
+    logs = list(state.get("logs", []))
     tokens_used = state.get("tokens_used", 0)
     token_budget = state.get("token_budget", 100000)
 
-    if tokens_used >= token_budget:
-        reason = f"Token budget exceeded ({tokens_used}/{token_budget})"
-    else:
-        reason = f"Max retries exhausted ({retry_count}/{max_retries})"
-
+    reason = f"Token budget exceeded ({tokens_used}/{token_budget})"
     logs.append(f"Task ABORTED: {reason}")
     return {
         "status": "aborted",
@@ -171,7 +207,9 @@ def create_agent_graph(checkpointer=None):
     workflow.add_node("planner", planner_node)
     workflow.add_node("human_review", human_review_node)
     workflow.add_node("coder", coder_node)
+    workflow.add_node("reviewer", reviewer_node)
     workflow.add_node("test_runner", execute_tests_node)
+    workflow.add_node("human_escalation", human_escalation_node)
     workflow.add_node("aborted", aborted_node)
     
     # Entry point & edges
@@ -185,16 +223,19 @@ def create_agent_graph(checkpointer=None):
             "planner": "planner"
         }
     )
-    workflow.add_edge("coder", "test_runner")
+    workflow.add_edge("coder", "reviewer")
+    workflow.add_edge("reviewer", "test_runner")
     workflow.add_conditional_edges(
         "test_runner",
         route_test_results,
         {
             "coder": "coder",
             "end": END,
+            "human_escalation": "human_escalation",
             "aborted": "aborted"
         }
     )
+    workflow.add_edge("human_escalation", END)
     workflow.add_edge("aborted", END)
     
     return workflow.compile(checkpointer=checkpointer)

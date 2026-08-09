@@ -31,6 +31,32 @@ services:
       timeout: 3s
       retries: 5
 
+  ollama:
+    image: ollama/ollama:latest
+    container_name: devagents_ollama
+    restart: always
+    ports:
+      - "11434:11434"
+    volumes:
+      - devagents_ollama_models:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:11434/api/tags || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  ollama-init:
+    image: ollama/ollama:latest
+    container_name: devagents_ollama_init
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: "no"
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    entrypoint: ["sh", "-c", "ollama pull llama3.1 && echo 'Ollama llama3.1 model ready.'"]
+
   api:
     build:
       context: .
@@ -42,16 +68,20 @@ services:
     volumes:
       - .:/app
     environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://devagents:devagents_pass@postgres:5432/devagents_db}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/0}
       - API_HOST=0.0.0.0
       - API_PORT=8000
-      - LLM_PROVIDER=${LLM_PROVIDER}
+      - LLM_PROVIDER=${LLM_PROVIDER:-ollama}
+      - OLLAMA_HOST=${OLLAMA_HOST:-http://ollama:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.1}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      ollama:
         condition: service_healthy
 
   worker:
@@ -63,14 +93,18 @@ services:
     volumes:
       - .:/app
     environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
-      - LLM_PROVIDER=${LLM_PROVIDER}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://devagents:devagents_pass@postgres:5432/devagents_db}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/0}
+      - LLM_PROVIDER=${LLM_PROVIDER:-ollama}
+      - OLLAMA_HOST=${OLLAMA_HOST:-http://ollama:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.1}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      ollama:
         condition: service_healthy
 
   frontend:
@@ -90,3 +124,4 @@ services:
 
 volumes:
   devagents_pgdata:
+  devagents_ollama_models:

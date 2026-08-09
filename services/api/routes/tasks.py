@@ -1,8 +1,12 @@
+import os
 import uuid
+import json
+import urllib.request
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from shared.db.session import get_db
 from shared.db.models import Task, LLMCall
 from services.worker.celery_app import run_task_graph
@@ -68,6 +72,34 @@ def list_tasks(limit: int = 50, db: Session = Depends(get_db)):
         for t in tasks
     ]
 
+@router.get("/llm/status")
+def get_llm_status():
+    provider = os.getenv("LLM_PROVIDER", "ollama").lower()
+    ollama_host = os.getenv("OLLAMA_HOST", "http://ollama:11434")
+    ollama_model = os.getenv("OLLAMA_MODEL", "llama3.1")
+    gemini_key = bool(os.getenv("GEMINI_API_KEY"))
+
+    reachable = False
+    if provider == "ollama":
+        try:
+            url = f"{ollama_host}/api/tags"
+            req = urllib.request.Request(url, method="GET")
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                reachable = (resp.status == 200)
+        except Exception:
+            reachable = False
+    elif provider in ["gemini", "openai", "anthropic"]:
+        reachable = True if (gemini_key or os.getenv("OPENAI_API_KEY") or os.getenv("ANTHROPIC_API_KEY")) else False
+    else:
+        reachable = True
+
+    return {
+        "provider": provider,
+        "model": ollama_model if provider == "ollama" else os.getenv("GEMINI_MODEL", "gemini-flash-latest"),
+        "host": ollama_host if provider == "ollama" else "cloud",
+        "reachable": reachable
+    }
+
 @router.get("/{task_id}")
 def get_task(task_id: str, db: Session = Depends(get_db)):
     try:
@@ -79,6 +111,11 @@ def get_task(task_id: str, db: Session = Depends(get_db)):
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
+    # Retrieve checkpoint details
+    checkpoint_sql = text("SELECT state_json FROM checkpoints WHERE task_id = :task_id ORDER BY created_at DESC LIMIT 1")
+    res = db.execute(checkpoint_sql, {"task_id": task.id}).first()
+    state_data = json.loads(res[0]) if res and res[0] else {}
+
     return {
         "id": str(task.id),
         "task_prompt": task.task_prompt,
@@ -88,7 +125,8 @@ def get_task(task_id: str, db: Session = Depends(get_db)):
         "pr_url": task.pr_url,
         "trace_id": task.trace_id,
         "created_at": task.created_at.isoformat() if task.created_at else "",
-        "updated_at": task.updated_at.isoformat() if task.updated_at else ""
+        "updated_at": task.updated_at.isoformat() if task.updated_at else "",
+        "checkpoint": state_data
     }
 
 @router.get("/{task_id}/llm-calls")

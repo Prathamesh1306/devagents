@@ -8,7 +8,7 @@ def get_llm_client(provider: Optional[str] = None, model_name: Optional[str] = N
     Factory function returning an LLM client provider instance based on provider name.
     Supported providers: 'gemini', 'openai', 'anthropic', 'ollama', 'stub'.
     """
-    selected_provider = (provider or os.getenv("LLM_PROVIDER", "stub")).lower()
+    selected_provider = (provider or os.getenv("LLM_PROVIDER", "ollama")).lower()
 
     if selected_provider == "gemini":
         return GeminiLLMClient(model_name=model_name)

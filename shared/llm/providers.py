@@ -185,8 +185,8 @@ class AnthropicLLMClient(BaseLLMClient):
 class OllamaLLMClient(BaseLLMClient):
     """Local Ollama LLM provider wrapper."""
     def __init__(self, model_name: Optional[str] = None, host: Optional[str] = None):
-        super().__init__(model_name=model_name or os.getenv("OLLAMA_MODEL", "llama3"))
-        self.host = host or os.getenv("OLLAMA_HOST", "http://localhost:11434")
+        super().__init__(model_name=model_name or os.getenv("OLLAMA_MODEL", "llama3.1"))
+        self.host = host or os.getenv("OLLAMA_HOST", "http://ollama:11434")
 
     def generate(
         self,
@@ -195,21 +195,24 @@ class OllamaLLMClient(BaseLLMClient):
         max_tokens: int = 1000,
         temperature: float = 0.7
     ) -> LLMResponse:
-        url = f"{self.host}/api/generate"
+        url = f"{self.host}/api/chat"
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+
         payload = {
             "model": self.model_name,
-            "prompt": prompt,
+            "messages": messages,
             "stream": False,
             "options": {"temperature": temperature, "num_predict": max_tokens}
         }
-        if system_prompt:
-            payload["system"] = system_prompt
 
         try:
             req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json"}, method="POST")
-            with urllib.request.urlopen(req) as resp:
+            with urllib.request.urlopen(req, timeout=120) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
-                content = data.get("response", "")
+                content = data.get("message", {}).get("content", "")
                 return LLMResponse(
                     content=content,
                     model=self.model_name,
@@ -221,3 +224,4 @@ class OllamaLLMClient(BaseLLMClient):
             res = StubLLMClient(model_name=f"{self.model_name}-fallback").generate(prompt, system_prompt, max_tokens, temperature)
             res.provider = "ollama"
             return res
+

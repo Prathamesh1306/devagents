@@ -13,7 +13,8 @@ def test_route_failed_with_retries():
 
 def test_route_failed_no_retries():
     state = {"test_results": {"passed": False}, "retry_count": 3, "max_retries": 3, "tokens_used": 100, "token_budget": 100000}
-    assert route_test_results(state) == "aborted"
+    assert route_test_results(state) == "human_escalation"
+
 
 def test_route_budget_exceeded():
     state = {"test_results": {"passed": False}, "retry_count": 0, "max_retries": 3, "tokens_used": 100001, "token_budget": 100000}
