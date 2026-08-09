@@ -40,7 +40,7 @@ services:
     volumes:
       - devagents_ollama_models:/root/.ollama
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:11434/api/tags || exit 1"]
+      test: ["CMD-SHELL", "ollama list || exit 1"]
       interval: 5s
       timeout: 5s
       retries: 10
